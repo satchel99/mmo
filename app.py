@@ -1,7 +1,10 @@
 import random, csv, hashlib, sqlite3
 from flask import Flask, render_template, request,redirect,url_for,session
+from flask_socketio import SocketIO, send
+
 app = Flask(__name__)
 app.secret_key = 'password'
+socketio = SocketIO(app)
 
 DB_NAME = 'users.db'
 
@@ -21,6 +24,12 @@ def pagetwo():
     if('username' in session):
         session.pop('username')
     return render_template("login.html")
+
+@app.route("/sessionspage", methods=['POST','GET'])
+def sessions_page():
+    print("\n\n\n")
+    print("testing sessoins")
+    return render_template("sessions.html")
 
 
 def checkexist_password(username):
@@ -47,6 +56,7 @@ def create_user(username, password):
     else:
         return (False, "db error")
     conn.close()
+
     
     
 @app.route("/sort", methods=['POST','GET'])
@@ -79,8 +89,17 @@ def sort():
                 return render_template("login.html",displaymessage = result[1])
         
     
+@socketio.on('message')
+def handle_message(message):
+    print('received message: ' + message)
+    send(message, broadcast=True)
+    
+@socketio.on('connect')
+def connect_handler():
+    send(session["username"] + " has connected!", broadcast=True)
 
-@app.route("/home")
+
+@app.route("/home", methods=['POST','GET'])
 def home():
     if ("username" in session):
         return render_template('welcome.html', username = session["username"])
@@ -88,8 +107,6 @@ def home():
         return redirect('/')
 
 
-
-
 if __name__=="__main__":
-    app.run(debug = True)
+    socketio.run(app, debug=True)
 
