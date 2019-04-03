@@ -25,6 +25,9 @@ def pagetwo():
         session.pop('username')
     return render_template("login.html")
 
+@app.route("/webgl")
+def phaser():
+    return render_template("success.html")
 @app.route("/sessionspage", methods=['POST','GET'])
 def sessions_page():
     print("\n\n\n")

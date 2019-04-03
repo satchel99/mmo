@@ -1,1 +1,127 @@
-success
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.15.1/dist/phaser-arcade-physics.min.js"></script>
+</head>
+<body>
+
+    <script>
+    var config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 0 }
+            }
+        },
+        scene: {
+            preload: preload,
+            create: create,
+            update: update
+        }
+    };
+
+    var game = new Phaser.Game(config);
+    var tail = [];
+
+    function preload ()
+    {
+
+        this.load.image('board', '../static/images/board.png');
+        this.load.image('border', '../static/images/border.png');
+        this.load.image('snake', '../static/images/snake.png');
+    }
+
+    function create ()
+    {
+        this.add.image(400, 300, 'board');
+        bounds = this.physics.add.staticGroup();
+        bounds.create(400, 600, 'border').refreshBody();
+        bounds.create(400, -5, 'border').refreshBody();
+        player = this.physics.add.sprite(100, 450, 'snake').setScale(0.5);
+        body = this.physics.add.sprite(100, 480, 'snake').setScale(0.5);
+        tail.push(body);
+        this.physics.add.collider(player, bounds);
+        //this.physics.enable(player, Phaser.Physics.ARCADE);
+        player.body.setGravityY(0)
+        this.anims.create({
+            key: 'left',
+            frames: this.anims.generateFrameNumbers('snake', { start: 0, end: 3 }),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'turn',
+            frames: [ { key: 'snake', frame: 4 } ],
+            frameRate: 20
+        });
+
+        this.anims.create({
+            key: 'right',
+            frames: this.anims.generateFrameNumbers('snake', { start: 5, end: 8 }),
+            frameRate: 10,
+            repeat: -1
+        });
+        
+
+        cursors = this.input.keyboard.createCursorKeys();
+        
+    }
+        
+    function update() {
+        if (cursors.left.isDown)
+        {
+            player.setVelocityX(-160);
+            player.x = player.x - 3;
+            for(var i = 0; i < tail.length; i++) {
+                tail[i].setVelocityX(-160);
+                tail[i].x = tail[i].x + 3;
+            }
+        }
+        else if (cursors.right.isDown)
+        {
+            player.setVelocityX(160);
+            player.x = player.x + 3;
+            for(var i = 0; i < tail.length; i++) {
+                tail[i].setVelocityX(160);
+                tail[i].x = tail[i].x + 3;
+            }
+           
+        }
+        else if (cursors.up.isDown)
+        {
+            player.setVelocityY(-160);
+            player.y = player.y - 3;
+            for(var i = 0; i < tail.length; i++) {
+                tail[i].setVelocityY(-160);
+                tail[i].y = tail[i].y - 3;
+            }
+        }
+        else if (cursors.down.isDown)
+        {
+            player.setVelocityY(160);
+            player.y = player.y + 3;
+            for(var i = 0; i < tail.length; i++) {
+                tail[i].setVelocityY(160);
+                tail[i].y = tail[i].y + 3;
+            }
+        }
+        else
+        {
+            player.setVelocityX(0);
+            player.setVelocityY(0);
+            player.anims.play('turn');
+            for(var i = 0; i < tail.length; i++) {
+                tail[i].setVelocityX(0);
+                tail[i].setVelocityY(0);
+            }
+        }
+        
+    }
+    </script>
+
+</body>
+</html>
