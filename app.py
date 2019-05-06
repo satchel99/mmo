@@ -1,12 +1,14 @@
 import random, csv, hashlib, sqlite3
 from flask import Flask, render_template, request,redirect,url_for,session
 from flask_socketio import SocketIO, send
+import json
 
 app = Flask(__name__)
 app.secret_key = 'password'
 socketio = SocketIO(app)
 
 DB_NAME = 'users.db'
+dicPlayers = {}
 
 @app.route("/jacobo")
 def js():
@@ -94,18 +96,33 @@ def sort():
     
 @socketio.on('message')
 def handle_message(message):
-    print('received message: ' + message)
-    send(message, broadcast=True)
+    if(message == "myUsername"):
+        print(dicPlayers)
+        send(dicPlayers[request.sid] + "~", broadcast=True)
+    #print('received message: ' + message)
+    try:
+        dic = json.loads(message)
+        newDic = {}
+        newDic["username"] = dicPlayers[request.sid]
+        newDic["data"] = dic
+        send(json.dumps(newDic), broadcast=True)
+    except Exception as e:
+        print("error")
+        print(dicPlayers[request.sid])
+        print(e)
+        send(message, broadcast=True)
     
 @socketio.on('connect')
 def connect_handler():
+    dicPlayers[request.sid] = session["username"]
+    session[request.sid] = session["username"]
     send(session["username"] + " has connected!", broadcast=True)
 
 
 @app.route("/home", methods=['POST','GET'])
 def home():
     if ("username" in session):
-        return render_template('welcome.html', username = session["username"])
+        return render_template('success.html', username = session["username"])
     else:
         return redirect('/')
 

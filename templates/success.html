@@ -2,10 +2,94 @@
 <html>
 <head>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.15.1/dist/phaser-arcade-physics.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
 </head>
 <body>
+    <div id = "username">
+        Welcome {{username}}!
+    </div>
 
     <script>
+        
+    function getMyUsername() {
+        socket.send("myUsername");
+    }
+    var username = "";
+    var mainObj;
+    var gameStatus = "";
+    var socket = io.connect("localhost:5000")
+    var otherPlayers = {};//{username: player : {}, tail : {}}
+    socket.on('connect', function() {
+        console.log(' :has connected')
+        console.log('adding new player to the board')
+    });
+    socket.on('message', function(msg) {
+        if(msg.indexOf("~") != -1) {
+            username = msg.substr(0, msg.indexOf("~"));
+        }
+        else if(msg.indexOf("myUsername") != -1) {
+            
+        }
+        else {
+            var ind = msg.indexOf(" has connected!")
+            if(ind != -1) {
+                var uname = msg.substr(0, ind);
+                if(uname in otherPlayers) {
+                    console.log("player exists");
+                }
+                else {
+                    if(mainObj != null) {
+                       var newPlayer = mainObj.physics.add.sprite(100, 450, 'snake').setScale(0.5);
+                        otherPlayers[uname].player = newPlayer;
+                        otherPlayers[uname].tail = [];
+                    }
+                }
+            }
+            else {
+                var parsd = JSON.parse(msg);
+                var uname = parsd["username"];
+                if(uname != '{{username}}') {
+                if(uname in otherPlayers) {
+                    var obj = parsd["data"];
+                    if(!("player" in otherPlayers[uname])) {
+                        otherPlayers[uname].player = mainObj.physics.add.sprite(100, 450, 'snake').setScale(0.5);
+                        console.log(otherPlayers[uname].player);
+                        console.log("here");
+                    }
+                    var pl = otherPlayers[uname].player;
+                    pl.x = obj.x;
+                    pl.y = obj.y;
+                    pl.setVelocityX(obj.vx);
+                    pl.setVelocityY(obj.vy);
+                    var ta = otherPlayers[uname].tail;
+                    for(i = 0; i < obj["tail"].length; i++) {
+                        if(i >= ta.length) {
+                            body3 = mainObj.physics.add.sprite(obj["tail"][i].x, obj["tail"][i].y, 'snake').setScale(0.5);
+                            body3.setVelocityX(obj.vx)
+                            body3.setVelocityY(obj.vy)
+                            ta.push(body3);
+                        }
+                        else {
+                          ta[i].x = obj["tail"][i].x;
+                          ta[i].y = obj["tail"][i].y;
+                          ta[i].setVelocityX(obj.vx);
+                          ta[i].setVelocityY(obj.vy);  
+                        }
+                    }
+
+                }
+                else {
+                   var newPlayer = mainObj.physics.add.sprite(100, 450, 'snake').setScale(0.5);
+                   otherPlayers[uname] = {};
+                   otherPlayers[uname].tail = []; 
+                   otherPlayers[uname].player = newPlayer;
+                }
+            }
+            }
+        }
+            gameStatus = msg;
+    });
     var config = {
         type: Phaser.AUTO,
         width: 800,
@@ -25,6 +109,10 @@
 
     var game = new Phaser.Game(config);
     var tail = [];
+    var orientation = "up";
+    var obj;
+    var lastx = 0;
+    var lasty = 0;
 
     function preload ()
     {
@@ -32,18 +120,18 @@
         this.load.image('board', '../static/images/board.png');
         this.load.image('border', '../static/images/border.png');
         this.load.image('snake', '../static/images/snake.png');
+        this.load.image('ball', '../static/images/ball.png');
     }
 
     function create ()
     {
+        getMyUsername();
+        console.log(this);
+        mainObj = this;
         this.add.image(400, 300, 'board');
-        bounds = this.physics.add.staticGroup();
-        bounds.create(400, 600, 'border').refreshBody();
-        bounds.create(400, -5, 'border').refreshBody();
         player = this.physics.add.sprite(100, 450, 'snake').setScale(0.5);
-        body = this.physics.add.sprite(100, 480, 'snake').setScale(0.5);
-        tail.push(body);
-        this.physics.add.collider(player, bounds);
+        obj = this.physics.add.sprite(200, 200, 'ball').setScale(0.5);
+        console.log(tail)
         //this.physics.enable(player, Phaser.Physics.ARCADE);
         player.body.setGravityY(0)
         this.anims.create({
@@ -71,55 +159,123 @@
         
     }
         
+   
+    function getNewX(x, y) {
+        if(orientation == "right") {
+            return {"x" : x - 30, "y" : y}
+        }
+        if(orientation == "left") {
+            return {"x" : x + 30, "y" : y}
+        }
+        if(orientation == "up") {
+            return {"x" : x, "y" : y + 30}
+        }
+        if(orientation == "down") {
+            return {"x" : x, "y" : y - 30}
+        }
+    }
+    
+        
     function update() {
+        switch (orientation)
+            {
+                case "left":
+                    player.x = Phaser.Math.Wrap(player.x - 1, 0, config.width);
+                    break;
+
+                case "right":
+                    player.x = Phaser.Math.Wrap(player.x + 1, 0, config.width);
+                    break;
+
+                case "up":
+                    player.y = Phaser.Math.Wrap(player.y - 1, 0, config.width);
+                    break;
+
+                case "down":
+                    player.y = Phaser.Math.Wrap(player.y + 1, 0, config.width);
+                    break;
+        }
+        if ((Math.abs(player.x - obj.x) < 30 && Math.abs(player.y - obj.y) < 30) &&  (Math.abs(player.x - lastx) > 30) && (Math.abs(player.y - lasty) > 30)) {
+            body3 = this.physics.add.sprite(player.x, player.y, 'snake').setScale(0.5);
+            tail.push(body3);
+            lastx = player.x;
+            lasty = player.y;
+            obj.x = Math.floor(Math.random()*0.8*config.width);
+            obj.y = Math.floor(Math.random()*0.6*config.width);
+            if(y > 600) {
+                y = 600;
+            }
+            if(y < 200) {
+                y = 200;
+            }
+            console.log(config.width)
+            console.log(x);
+            console.log(y);
+        }
+        var x = player.x;
+        var y = player.y;
+        var ballx = obj.x;
+        var bally = obj.y;
         if (cursors.left.isDown)
         {
-            player.setVelocityX(-160);
-            player.x = player.x - 3;
-            for(var i = 0; i < tail.length; i++) {
-                tail[i].setVelocityX(-160);
-                tail[i].x = tail[i].x + 3;
-            }
+            orientation = "left";
         }
         else if (cursors.right.isDown)
         {
-            player.setVelocityX(160);
-            player.x = player.x + 3;
-            for(var i = 0; i < tail.length; i++) {
-                tail[i].setVelocityX(160);
-                tail[i].x = tail[i].x + 3;
-            }
+            orientation = "right";
            
         }
         else if (cursors.up.isDown)
         {
-            player.setVelocityY(-160);
-            player.y = player.y - 3;
-            for(var i = 0; i < tail.length; i++) {
-                tail[i].setVelocityY(-160);
-                tail[i].y = tail[i].y - 3;
-            }
+            orientation = "up";
         }
         else if (cursors.down.isDown)
         {
-            player.setVelocityY(160);
-            player.y = player.y + 3;
-            for(var i = 0; i < tail.length; i++) {
-                tail[i].setVelocityY(160);
-                tail[i].y = tail[i].y + 3;
-            }
+            orientation = "down";
         }
-        else
-        {
+        if(orientation == "up") {
+            player.setVelocityY(-160);
             player.setVelocityX(0);
+            player.y = player.y - 3;
+        }
+        else if(orientation == "down") {
+            player.setVelocityY(160);
+            player.setVelocityX(0);
+            player.y = player.y + 3;
+        }
+        else if(orientation == "right") {
+            player.setVelocityX(160);
             player.setVelocityY(0);
-            player.anims.play('turn');
-            for(var i = 0; i < tail.length; i++) {
-                tail[i].setVelocityX(0);
-                tail[i].setVelocityY(0);
-            }
+            player.x = player.x + 3;
+        }
+        else if(orientation == "left") {
+            player.setVelocityX(-160);
+            player.setVelocityY(0);
+            player.x = player.x - 3;
+        }
+        if(tail.length > 0) {
+            var coords = getNewX(player.x, player.y)
+            tail[0].x = coords["x"]
+            tail[0].y = coords["y"]
+            tail[0].setVelocityX(player.body.velocity.x);
+            tail[0].setVelocityY(player.body.velocity.y);
+        }
+        for(var i = 1; i < tail.length; i++) {
+            var coords = getNewX(tail[i-1].x, tail[i-1].y)
+            tail[i].x = coords["x"]
+            tail[i].y = coords["y"]
+            tail[i].setVelocityX(tail[i-1].body.velocity.x);
+            tail[i].setVelocityY(tail[i-1].body.velocity.y);
         }
         
+        var playerObj = {"x" : player.x, "y" : player.y, "vx" : player.body.velocity.x, "vy" : player.body.velocity.y};
+        var tailObjs = [];
+        for(var i = 0; i < tail.length; i++) {
+            tailObjs.push({"x" : tail[i].x, "y" : tail[i].y});
+        }
+        playerObj["tail"] = tailObjs;
+        var jsonStr = JSON.stringify(playerObj);
+        socket.send(jsonStr);
     }
     </script>
 
