@@ -98,12 +98,12 @@ def sort():
 def handle_message(message):
     if(message == "myUsername"):
         print(dicPlayers)
-        send(dicPlayers[request.sid] + "~", broadcast=True)
+        send(session["username"] + "~", broadcast=True)
     #print('received message: ' + message)
     try:
         dic = json.loads(message)
         newDic = {}
-        newDic["username"] = dicPlayers[request.sid]
+        newDic["username"] = session["username"]
         newDic["data"] = dic
         send(json.dumps(newDic), broadcast=True)
     except Exception as e:

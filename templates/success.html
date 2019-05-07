@@ -12,6 +12,15 @@
 
     <script>
         
+    function inRange(range, obj1, obj2) {
+        if((Math.abs(obj1.x - obj2.x) < range) && (Math.abs(obj1.y - obj2.y) < range)) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+        
     function getMyUsername() {
         socket.send("myUsername");
     }
@@ -31,6 +40,11 @@
         else if(msg.indexOf("myUsername") != -1) {
             
         }
+        else if(msg.indexOf(" died") != -1) {
+            var diedName = msg.substr(0, msg.indexOf(" died"));
+            delete otherPlayers[diedName];
+            console.log(msg);
+        }
         else {
             var ind = msg.indexOf(" has connected!")
             if(ind != -1) {
@@ -39,8 +53,9 @@
                     console.log("player exists");
                 }
                 else {
-                    if(mainObj != null) {
+                    if((mainObj != null) && (uname != '{{username}}')){
                        var newPlayer = mainObj.physics.add.sprite(100, 450, 'snake').setScale(0.5);
+                        otherPlayers[uname] = {};
                         otherPlayers[uname].player = newPlayer;
                         otherPlayers[uname].tail = [];
                     }
@@ -276,6 +291,25 @@
         playerObj["tail"] = tailObjs;
         var jsonStr = JSON.stringify(playerObj);
         socket.send(jsonStr);
+        
+        function checkCollision() {
+            for(i in otherPlayers) {
+                var temp_pl = otherPlayers[i].player;
+                if(inRange(30, player, temp_pl)) {
+                    if(otherPlayers[i].tail.length < tail.length) {
+                        socket.send(i + ' died');
+                    }
+                    else {
+                        socket.send('{{username}} died');
+                        window.location.href = "./";
+                    }
+                }
+            }
+     }
+        
+    checkCollision();
+    
+    
     }
     </script>
 
